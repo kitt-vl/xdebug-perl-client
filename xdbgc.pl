@@ -5,7 +5,6 @@ use utf8;
 package XDBGc;
 use Mojo::Base -base;
 
-
 sub log{
 	my $msg = "@{[ @_ ]}";
 	utf8::decode($msg);
@@ -46,7 +45,7 @@ sub start{
 	};
 	die unless $self->server;
 	
-	XDBGc::log("Server waiting for connentions...");
+	XDBGc::log("Server waiting for connections...");
 	return $self;	
 }
 
@@ -62,8 +61,7 @@ sub term_command_read{
 	
 	XDBGc::log("READ TERM HERE... $cmd");
 	
-	$self->_command($cmd );
-	
+	$self->_command($cmd );	
 }
 	
 sub _command{
@@ -78,9 +76,9 @@ sub _send_command{
 		my ($self, $cmd) = (shift, shift);
 		
 		$self->_tid( $self->_tid()+1 );
-		$cmd .= ' -i ' . $self->_tid ." ".chr(0);
+		$cmd .= ' -i ' . $self->_tid ." -- ".chr(0);
 		my $res = $self->client->send($cmd);		
-		XDBGc::log("_send_command: sended $res, len " . length($cmd));
+		XDBGc::log("_send_command: cmd '$cmd' sended $res, len " . length($cmd));
 }
 
 sub shutdown{
@@ -93,7 +91,6 @@ sub shutdown{
 
 sub accept{
 	my $self = shift;
-
 	
 	if(my $client = $self->server->accept) 
 	{
