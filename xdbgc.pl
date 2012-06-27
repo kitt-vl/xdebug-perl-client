@@ -58,25 +58,42 @@ sub on_data{
 sub term_command_read{
 	my $self = shift;
 	my $prompt = "xDBGc: ";
-	while ( defined ($_ = $self->_term->readline($prompt)) ) 
-	{
-	  XDBGc::log("READ TERM HERE... $_");
-		$self->_send_command($_);
-	}
+	my $cmd = $self->_term->readline($prompt);
+	
+	XDBGc::log("READ TERM HERE... $cmd");
+	
+	$self->_command($cmd );
+	
 }
 	
+sub _command{
+	my ($self,$cmd) = (shift, shift);
+	
+	$self->shutdown if $cmd =~ /^quit/;
+	
+	$self->_send_command($cmd);
+}
+
 sub _send_command{
-		my $self = shift;
-		my $cmd = shift;
-		$self->_tid($self->_tid() + 1);
-		$cmd .= ' -i ' . $self->_tid;
-		$self->client->send($cmd);
+		my ($self, $cmd) = (shift, shift);
 		
+		$self->_tid( $self->_tid()+1 );
+		$cmd .= ' -i ' . $self->_tid ." ".chr(0);
+		my $res = $self->client->send($cmd);		
+		XDBGc::log("_send_command: sended $res, len " . length($cmd));
+}
+
+sub shutdown{
+	my $self = shift;
+	$self->client->close if $self->client;
+	$self->server->close if $self->server;
+	XDBGc::log( "Program shutdown'ed(0)");
+	exit 0;	
 }
 
 sub accept{
 	my $self = shift;
-	my $xml;
+
 	
 	if(my $client = $self->server->accept) 
 	{
@@ -86,16 +103,6 @@ sub accept{
 		my $hostinfo = gethostbyaddr($self->client->peeraddr);
 		
 		XDBGc::log("Connect from ", $hostinfo->name || $self->client->peerhost);
-
-		my $data;
-		while (ord(my $_ = $self->client->getc)!=0) 
-		{
-			$data .= $_;					
-		}		
-		$self->client->read($xml,$data+1);		
-		
-		
-		$self->on_data($xml);	
 		
 		#$self->client->close;	
 		return 1;
@@ -105,6 +112,19 @@ sub accept{
 		return 0;
 	}	
 }
+
+sub listen{
+		my $self = shift;
+		my ($data,$xml);
+		while (ord(my $_ = $self->client->getc)!=0) 
+		{
+			$data .= $_;					
+		}		
+		$self->client->read($xml,$data+1);		
+		#XDBGc::log("listen: read ", $data+1, " bytes ");
+		$self->on_data($xml);
+		return $xml;
+}
 1;
 ########################################################################
 
@@ -112,10 +132,14 @@ my $serv = XDBGc::server->new;
 
 $serv->start;
 
-while($serv->accept)
+if ($serv->accept)
 {
-		$serv->term_command_read();
+	while( my $xml = $serv->listen)
+	{
+			#XDBGc::log("main: xml ", $xml);
+			$serv->term_command_read();
+	}
 }
 
  
-say "Program teminated(0)";
+XDBGc::log( "Program teminated(0)" );
