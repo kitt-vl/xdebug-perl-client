@@ -1,21 +1,8 @@
-#!perl
 use strict;
 use warnings;
 use utf8;
-########################################################################
-package XDBGc;
-use Mojo::Base -base;
 
-sub log{
-    @_ = map { defined($_) ? $_ :'<undef>'}  @_;
-    
-	my $msg = "@{[ @_ ]}";
-	utf8::decode($msg);
-	say "[@{[ ~~localtime ]}]: $msg";	 
-}
-1;
-########################################################################
-package XDBGc::server;
+package XDBGc::Server;
 use Mojo::Base -base;
 use IO::Socket::INET;
 use Net::hostent; 
@@ -52,7 +39,7 @@ sub on_data{
 		my ($self,$xml) = (shift,shift);
 		XDBGc::log("on_data  :", $xml);
         
-        &$self->_on_data_handlerif($xml)  if defined $self->_on_data_handler && ref $self->_on_data_handler eq 'CODE'        
+        &$self->_on_data_handler($xml)  if defined $self->_on_data_handler && ref $self->_on_data_handler eq 'CODE'        
 }
 
 sub shutdown{
@@ -94,55 +81,3 @@ sub listen{
 		return $xml;
 }
 1;
-########################################################################
-package XDBGc::debugger;
-use utf8;
-use Mojo::Base -base;
-use Mojo::DOM;
-use Term::ReadLine;
-
-has _term => sub { Term::ReadLine->new('', \*STDIN, \*STDOUT); };
-has server => sub { XDBGc::server->new; };
-has _tid => 0;
-
-sub term_read_command{
-	my $self = shift;
-	my $prompt = "XDBGc: ";
-	my $cmd = $self->_term->readline($prompt);
-	
-	XDBGc::log("term_read_command: $cmd");
-	
-	$self->on_command($cmd);	
-}
-
-sub on_command{
-	my ($self,$cmd) = (shift, shift);
-	
-	$self->server->shutdown if $cmd =~ /^quit/;	
-    
-    $self->_tid( $self->_tid()+1 );
-    
-    $cmd .= ' -i ' . $self->_tid .' -- '.chr(0);
-        
-    my $res = $self->server->client->send($cmd);		
-    XDBGc::log("on_command: cmd '$cmd' sended $res, len " . length($cmd));
-}
-	
-1;
-########################################################################
-package main;
-use utf8;
-
-my $db = XDBGc::debugger->new;
-$db->server->start;
-
-while($db->server->accept)
-{
-	while( my $xml = $db->server->listen)
-	{
-			$db->term_read_command();
-	}
-    XDBGc::log('Debug session ended, waiting for new connections');
-}
- 
-XDBGc::log( "Program teminated(0)" );
