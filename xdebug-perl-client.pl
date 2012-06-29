@@ -7,7 +7,6 @@ use utf8;
 use FindBin;
 use lib "$FindBin::Bin/lib";
 
-use XDBGc;
 use XDBGc::Debugger;
 
 my $db = XDBGc::Debugger->new;
@@ -17,10 +16,12 @@ while($db->server->accept)
 {
 	while( my $xml = $db->server->listen)
 	{
-			$db->term_read_command();
+            $db->on_data_recv($xml);
+			my $cmd = $db->ui->term_read_command();
+            $db->on_data_send($cmd);
 	}
-    XDBGc::log('Debug session ended, waiting for new connections');
+    $db->ui->log('Debug session ended, waiting for new connections');
 }
  
-XDBGc::log( "Program teminated(0)" );
+$db->ui->log( "Program teminated(0)" );
 

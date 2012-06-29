@@ -1,8 +1,8 @@
+package XDBGc::Debugger::Server;
 use strict;
 use warnings;
 use utf8;
 
-package XDBGc::Server;
 use Mojo::Base -base;
 use IO::Socket::INET;
 use Net::hostent; 
@@ -12,7 +12,7 @@ has host => 'localhost';
 has server => sub { undef; };
 has client => sub { undef; };
 has _max_conn => 5;
-has _on_data_handler => sub { undef; };
+has debugger => undef;
 
 ############
 sub start{
@@ -27,7 +27,7 @@ sub start{
                                             Listen    => $self->_max_conn,
                                             Reuse     => 1);
 					
-		XDBGc::log("Can't start server: ", $@) if $@;
+		$self->debugger->ui->log("Can't start server: ", $@) if $@;
 		$self->server($server);			
 	};
 	die unless $self->server;
@@ -35,24 +35,17 @@ sub start{
 	return $self;	
 }
 
-sub on_data{
-		my ($self,$xml) = (shift,shift);
-		XDBGc::log("on_data  :", $xml);
-        
-        &$self->_on_data_handler($xml)  if defined $self->_on_data_handler && ref $self->_on_data_handler eq 'CODE'        
-}
-
 sub shutdown{
 	my $self = shift;
 	$self->client->close if $self->client;
 	$self->server->close if $self->server;
-	XDBGc::log( "Program shutdown'ed(0)");
+	$self->debugger->ui->log( "Program shutdown'ed(0)");
 	exit 0;	
 }
 
 sub accept{
 	my $self = shift;
-    XDBGc::log("Server waiting for connections...");
+    $self->debugger->ui->log("Server waiting for connections...");
 	if(my $client = $self->server->accept) 
 	{
 		$self->client($client);
@@ -60,9 +53,8 @@ sub accept{
 
 		my $hostinfo = gethostbyaddr($self->client->peeraddr);
 		
-		XDBGc::log("Connect from ", $hostinfo->name || $self->client->peerhost);
-		
-		#$self->client->close;	
+		$self->debugger->ui->log("Connect from ", $hostinfo->name || $self->client->peerhost);
+
 		return 1;
 	}	
 }
@@ -76,8 +68,7 @@ sub listen{
 			$data .= $char;					
 		}		
 		$self->client->read($xml,$data+1) if $data;		
-		#XDBGc::log("listen: read ", $data+1, " bytes ");
-		$self->on_data($xml) if $xml;
+
 		return $xml;
 }
 1;
