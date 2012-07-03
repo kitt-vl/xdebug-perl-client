@@ -53,11 +53,11 @@ sub print_window{
 		
 		if($min == $current)
 		{
-			say "$min:==>\t$_";	
+			say "$min: ==>$_";	
 		}
 		else
 		{
-			say "$min:\t  $_";
+			say "$min:\t$_";
 		}
 		
 		$min++;
