@@ -11,6 +11,7 @@ use Term::ReadLine;
 has _term => sub { Term::ReadLine->new('', \*STDIN, \*STDOUT); };
 has prompt => 'XDBGc';
 has debugger => undef;
+has window_size => 10;
 
 sub log{
     my $self = shift;

@@ -26,7 +26,14 @@ sub update{
     {
         $self->status($dom->response->{status}) if defined $dom->response->{status};
         $self->current_file($dom->response->{fileuri}) if defined $dom->response->{fileuri};
-        $self->current_file($dom->response->{lineno}) if defined $dom->response->{lineno};
+        $self->lineno($dom->response->{lineno}) if defined $dom->response->{lineno};
+    }
+    
+    if( defined (my $node = $dom->at('message')) )
+    {
+        $self->status($node->{status}) if defined $node->{status};
+        $self->current_file($node->{filename}) if defined $node->{filename};
+        $self->lineno($node->{lineno}) if defined $node->{lineno};
     }
 }
 
