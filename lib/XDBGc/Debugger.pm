@@ -98,7 +98,7 @@ sub command_get_source{
         
         #$self->ui->log('command_get_source: \n' . $list);
         #TODO How to really determine sources line separator?
-        my @lines = split /\n?\r/, $list;
+        my @lines = split /\r?\n/, $list;
         $self->session->source_cache->{$file} = \@lines;
     }
     
@@ -113,7 +113,7 @@ sub command_get_source{
         last if $cnt > $line_end;
         push @part_list, $line;
     } 
-    return  @part_list;
+    return  \@part_list;
     
 }
 1;
