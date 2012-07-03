@@ -11,7 +11,7 @@ has initial_file => undef;
 has current_file => undef;
 has lineno => 0;
 has status => '';
-
+has source_cache => sub { my %x = (); return \%x; };
 
 sub update{
     my ($self, $dom) = (shift, shift);

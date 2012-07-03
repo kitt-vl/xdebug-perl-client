@@ -18,7 +18,7 @@ while($db->server->accept)
 	{
             $db->on_data_recv($xml);
 			my $cmd = $db->ui->term_read_command();
-            $db->on_data_send($cmd);
+            $db->on_data_send($cmd) if $cmd;
 	}
     $db->ui->log('Debug session ended, waiting for new connections');
 }
