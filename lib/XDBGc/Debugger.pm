@@ -15,28 +15,49 @@ use XDBGc::Debugger::Session;
 has server => sub { my $self = shift; return XDBGc::Debugger::Server->new(debugger => $self ); };    
 has session => sub { my $self = shift; return XDBGc::Debugger::Session->new(debugger => $self); };
 has ui => sub { my $self = shift;  XDBGc::Debugger::UI->new(debugger => $self); };
+has debug_mode => 1;
 
 sub on_data_send{
     my ($self,$cmd) = (shift, shift);
 	
+    return 1 unless $cmd;
+    
 	$self->server->shutdown if $cmd =~ /^quit/;	
     if ($cmd =~ /^list/)
     {
         $self->command_get_source;
-        return;
+        return 1;
     }
+    
+    if ($cmd =~ /^debug 1/)
+    {
+        $self->debug_mode(1);
+        return 1;
+    }
+    
+    if ($cmd =~ /^debug 0/)
+    {
+        $self->debug_mode(0);
+        return 1;
+    }
+    
+    $cmd = 'step_into'    if ($cmd =~ /^s$/);   
+    $cmd = 'step_over'  if ($cmd =~ /^n$/);    
+    $cmd = 'step_out'  if ($cmd =~ /^r$/);    
+    $cmd = 'run'  if ($cmd =~ /^c$/);        
     
     $self->session->_tid( $self->session->_tid()+1 );
     
-    $cmd .= ' -i ' . $self->session->_tid .' -- '.chr(0);
+    $cmd .= ' -i ' . $self->session->_tid  . ' -- ' . chr(0);
         
     $self->send_data_raw($cmd);
+    return 0;
 }
 
 sub send_data_raw{
         my ($self,$cmd) = (shift, shift);
         my $res = $self->server->client->send($cmd);		
-        $self->ui->log("send_data_raw: cmd '$cmd' sended $res, len " . length($cmd));
+        $self->ui->debug("send_data_raw: cmd '$cmd' sended $res, len " . length($cmd));
 }
     
 sub on_data_recv{
@@ -52,9 +73,14 @@ sub process_response{
 
     $self->session->update($dom);
     
-    $self->ui->log("process_response:\n$xml");
+    $self->ui->debug("process_response:\n$xml");
     
-    return if defined $dom->at('init');
+    if (defined $dom->at('init'))
+    {
+        my @lines = $self->command_get_source();
+        $self->on_data_send('step_into');
+        return;
+    }
     
     if(defined $dom->at('response') && defined $dom->response->{command})
     {
@@ -63,7 +89,7 @@ sub process_response{
         return;
     }
 
-    $self->ui->log("Unimplemented XDEBUG engine answer:\n$xml");
+    $self->ui->debug("Unimplemented XDEBUG engine answer:\n$xml");
 
 }
 
@@ -83,7 +109,6 @@ sub command_get_source{
         $self->on_data_send($cmd);
         
         my $xml = $self->server->listen;
-        #$self->on_data_recv($xml);
         
         my $dom = Mojo::DOM->new($xml);
         my $list = '';
@@ -93,7 +118,7 @@ sub command_get_source{
         }
         else
         {
-            $self->ui->log('command_get_source: NO ANY SOURCE RETURNED');
+            $self->ui->debug('command_get_source: NO ANY SOURCE RETURNED');
         }
         
         #$self->ui->log('command_get_source: \n' . $list);

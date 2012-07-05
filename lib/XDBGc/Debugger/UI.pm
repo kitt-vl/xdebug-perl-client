@@ -24,19 +24,33 @@ sub log{
 	say "[@{[ ~~localtime ]}]: $msg";	 
 }
 
+sub debug{
+    
+    my $self = shift;
+    return unless $self->debugger->debug_mode;
+    
+    @_ = map { defined($_) ? $_ :'<undef>'}  @_;
+    
+	my $msg = "@{[ @_ ]}";
+	utf8::decode($msg);
+
+	say "[DEBUG @{[ ~~localtime ]}]: $msg";	 
+}
+
 
 sub term_read_command{
 	my $self = shift;
+    
+    $self->print_window;
+    
     my $info = '';
     $info .= $self->debugger->session->current_file if $self->debugger->session->current_file;
     $info .= ' , line ' . $self->debugger->session->lineno if $self->debugger->session->lineno;
     say $info if $info;
     
-    $self->print_window;
-    
 	my $cmd = $self->_term->readline('<' . $self->prompt . ':' . $self->debugger->session->status . '>');
 	
-	$self->log("term_read_command: $cmd");
+	$self->debug("term_read_command: $cmd");
 	
 	return $cmd;	
 }
@@ -44,16 +58,18 @@ sub term_read_command{
 sub print_window{
     my $self = shift;
     my ($min, $max, $current);
+    
     $min = $self->min_lineno;
     $max = $self->max_lineno;
     $current = $self->debugger->session->lineno;
     my @list = @{$self->debugger->command_get_source($self->debugger->session->current_file, $min, $max)};
+    
     for(@list)
     {
 		
 		if($min == $current)
 		{
-			say "$min: ==>$_";	
+			say "$min: ==> $_";	
 		}
 		else
 		{
@@ -68,14 +84,14 @@ sub max_lineno{
         my ($self, $file) = @_;
         $file = $self->debugger->session->current_file unless $file;
         
-        my $half_win = int($self->window_size/2) + 1;
+        my $half_win = int($self->window_size/2);
         my @list = @{$self->debugger->command_get_source($file)};
         
         my $max_file = scalar @list;
         my $max_win = $self->debugger->session->lineno + $half_win ;
         my $max  =  $max_win > $max_file ? $max_file : $max_win;
         
-        $self->log("max_lineno: $max");
+        $self->debug("max_lineno: $max");
         return $max;
 }
 
@@ -87,7 +103,7 @@ sub min_lineno{
         my $min_win = $self->debugger->session->lineno - $half_win;
         my $min =  $min_win > 0 ? $min_win : 1;
         
-        $self->log("min_lineno: $min");
+        $self->debug("min_lineno: $min");
         return $min;
 }
 1;

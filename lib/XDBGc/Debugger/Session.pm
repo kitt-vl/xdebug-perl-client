@@ -9,7 +9,7 @@ use Mojo::DOM;
 has _tid => 0;
 has initial_file => undef;
 has current_file => undef;
-has lineno => 0;
+has lineno => 1;
 has status => '';
 has source_cache => sub { my %x = (); return \%x; };
 

@@ -17,8 +17,13 @@ while($db->server->accept)
 	while( my $xml = $db->server->listen)
 	{
             $db->on_data_recv($xml);
-			my $cmd = $db->ui->term_read_command();
-            $db->on_data_send($cmd) if $cmd;
+			
+            while(1)
+            {
+                my $cmd = $db->ui->term_read_command();                        
+                my $res = $db->on_data_send($cmd);
+                last unless $res;
+            }
 	}
     $db->ui->log('Debug session ended, waiting for new connections');
 }
