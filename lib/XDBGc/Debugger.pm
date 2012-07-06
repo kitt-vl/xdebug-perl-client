@@ -79,6 +79,7 @@ sub process_response{
     {
         my @lines = $self->command_get_source();
         $self->on_data_send('step_into');
+        $self->server->listen;
         return;
     }
     

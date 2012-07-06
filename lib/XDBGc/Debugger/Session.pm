@@ -20,6 +20,7 @@ sub update{
     {
         $self->initial_file($dom->init->{fileuri});
         $self->current_file($dom->init->{fileuri});
+        $self->lineno(1);
     }
     
     if( defined $dom->at('response') )
