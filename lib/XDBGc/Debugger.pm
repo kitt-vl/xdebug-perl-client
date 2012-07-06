@@ -7,7 +7,7 @@ use Mojo::Base -base;
 use Mojo::DOM;
 use Mojo::Util qw/b64_decode/;
 
-use XDBGc; #log
+use XDBGc; #log, constants
 use XDBGc::Debugger::Server;
 use XDBGc::Debugger::UI;
 use XDBGc::Debugger::Session;
@@ -20,31 +20,8 @@ has debug_mode => 1;
 sub on_data_send{
     my ($self,$cmd) = (shift, shift);
 	
-    return 1 unless $cmd;
-    
-	$self->server->shutdown if $cmd =~ /^quit/;	
-    if ($cmd =~ /^list/)
-    {
-        $self->command_get_source;
-        return 1;
-    }
-    
-    if ($cmd =~ /^debug 1/)
-    {
-        $self->debug_mode(1);
-        return 1;
-    }
-    
-    if ($cmd =~ /^debug 0/)
-    {
-        $self->debug_mode(0);
-        return 1;
-    }
-    
-    $cmd = 'step_into'    if ($cmd =~ /^s$/);   
-    $cmd = 'step_over'  if ($cmd =~ /^n$/);    
-    $cmd = 'step_out'  if ($cmd =~ /^r$/);    
-    $cmd = 'run'  if ($cmd =~ /^c$/);        
+    $cmd = $self->process_request($cmd);
+    return XDBGc::REDO_READ_COMMAND if $cmd eq XDBGc::REDO_READ_COMMAND;
     
     $self->session->_tid( $self->session->_tid()+1 );
     
@@ -56,6 +33,10 @@ sub on_data_send{
 
 sub send_data_raw{
         my ($self,$cmd) = (shift, shift);
+        
+        $self->ui->debug("send_data_raw: EMPTY COMMAND") unless $cmd;        
+        return unless $cmd;
+        
         my $res = $self->server->client->send($cmd);		
         $self->ui->debug("send_data_raw: cmd '$cmd' sended $res, len " . length($cmd));
 }
@@ -66,6 +47,38 @@ sub on_data_recv{
     $self->process_response($xml);
 }
 
+sub process_request{
+    my ($self,$cmd) = (shift, shift);
+	
+    return XDBGc::REDO_READ_COMMAND unless $cmd;
+    
+	$self->server->shutdown if $cmd =~ /^quit/;	
+    if ($cmd =~ /^list/)
+    {
+        $self->command_get_source;
+        return XDBGc::REDO_READ_COMMAND;
+    }
+    
+    if ($cmd =~ /^debug 1/)
+    {
+        $self->debug_mode(1);
+        return XDBGc::REDO_READ_COMMAND;
+    }
+    
+    if ($cmd =~ /^debug 0/)
+    {
+        $self->debug_mode(0);
+        return XDBGc::REDO_READ_COMMAND;
+    }
+    
+    $cmd = 'step_into'    if ($cmd =~ /^s$/);   
+    $cmd = 'step_over'  if ($cmd =~ /^n$/);    
+    $cmd = 'step_out'  if ($cmd =~ /^r$/);    
+    $cmd = 'run'  if ($cmd =~ /^c$/);  
+    $cmd = 'breakpoint_set'  if ($cmd =~ /^b\s/);
+    
+    return $cmd; 
+}
 sub process_response{
     my ($self,$xml) = (shift, shift);
     my $dom = Mojo::DOM->new($xml);

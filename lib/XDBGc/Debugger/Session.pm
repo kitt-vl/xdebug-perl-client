@@ -3,15 +3,19 @@ use strict;
 use warnings;
 use utf8;
 
+use File::Basename;
 use Mojo::Base -base;
 use Mojo::DOM;
+use Mojo::Collection;
 
 has _tid => 0;
+has cwd => undef;
 has initial_file => undef;
 has current_file => undef;
 has lineno => 1;
 has status => '';
 has source_cache => sub { my %x = (); return \%x; };
+has breakpoints => sub { Mojo::Collection->new; };
 
 sub update{
     my ($self, $dom) = (shift, shift);
@@ -21,6 +25,9 @@ sub update{
         $self->initial_file($dom->init->{fileuri});
         $self->current_file($dom->init->{fileuri});
         $self->lineno(1);
+        $self->status('break');
+        
+        $self->cwd(dirname($self->initial_file)) if $self->initial_file;
     }
     
     if( defined $dom->at('response') )
@@ -36,6 +43,8 @@ sub update{
         $self->current_file($node->{filename}) if defined $node->{filename};
         $self->lineno($node->{lineno}) if defined $node->{lineno};
     }
+    
+    
 }
 
 1;
