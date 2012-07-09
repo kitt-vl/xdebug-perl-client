@@ -70,7 +70,7 @@ sub process_request{
     
     if($cmd =~ /^L$/)
     {
-        $self->ui->print_list_breakpoints;
+        $self->ui->print_breakpoints_list;
         return XDBGc::REDO_READ_COMMAND;
     }
     
@@ -78,17 +78,8 @@ sub process_request{
     $cmd = 'step_over'  if ($cmd =~ /^n$/);    
     $cmd = 'step_out'   if ($cmd =~ /^r$/);    
     $cmd = 'run'    if ($cmd =~ /^c$/);  
-    if ($cmd =~ /^b\s/)
-    {
-        #$cmd = 'breakpoint_set'; 
-        my $bp = XDBGc::Debugger::Breakpoint->new(session => $self->session);
-        $bp->parse( $cmd );
-        $cmd = $bp->to_string;
-        
-    }
-    
-    
-    
+    $cmd = $self->command_breakpoint_set($cmd) if ($cmd =~ /^b\s/);
+       
     return $cmd; 
 }
 sub process_response{
@@ -108,16 +99,16 @@ sub process_response{
         return;
     }
     
-    if(defined $dom->at('response') && defined $dom->response->{command})
+    if(defined(my $response = $dom->at('response')) && defined $dom->response->{command})
     {
-        my $cmd = $dom->response->{command};
+        my $cmd = $response->{command};
         
         if($cmd eq 'breakpoint_set')
         {
-            if(defined $dom->{id})
+            if(defined $response->{id})
             {
                 my $bp = $self->session->breakpoints->first;
-                $bp->id($dom->{id});
+                $bp->id($response->{id});
             }
         }
         return;
@@ -172,7 +163,14 @@ sub command_get_source{
         last if $cnt > $line_end;
         push @part_list, $line;
     } 
-    return  \@part_list;
-    
+    return  \@part_list;    
+}
+
+sub command_breakpoint_set{
+	my ($self, $cmd) = (shift, shift);
+	my $bp = XDBGc::Debugger::Breakpoint->new(session => $self->session);
+	$bp->parse( $cmd );
+	$cmd = $bp->to_string;
+	return $cmd;
 }
 1;

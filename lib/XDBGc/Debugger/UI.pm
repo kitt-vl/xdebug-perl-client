@@ -34,7 +34,7 @@ sub debug{
 	my $msg = "@{[ @_ ]}";
 	utf8::decode($msg);
 
-	say "[DEBUG @{[ ~~localtime ]}]: $msg";	 
+	say "\n\n[DEBUG @{[ ~~localtime ]}]: $msg";	 
 }
 
 
@@ -90,6 +90,7 @@ sub max_lineno{
         
         my $max_file = scalar @list;
         my $max_win = $self->debugger->session->lineno + $half_win ;
+        $max_win = $self->window_size > $max_win ? $self->window_size : $max_win;
         my $max  =  $max_win > $max_file ? $max_file : $max_win;
         
         $self->debug("max_lineno: $max");
@@ -108,14 +109,16 @@ sub min_lineno{
         return $min;
 }
 
-sub print_list_breakpoints{
+sub print_breakpoints_list{
     my $self = shift;
     
+    say "\nList of breakpoints:";
     for my $bp (@{$self->debugger->session->breakpoints})
     {
         my $res = " ID: " . $bp->id ;
         if($bp->type eq 'line')
         {
+			$res  .= ' ' . $bp->filename if $bp->filename;
             $res  .= ' on line ' . $bp->lineno;
         }
         elsif($bp->type eq 'call')
