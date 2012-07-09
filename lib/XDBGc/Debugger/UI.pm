@@ -64,6 +64,7 @@ sub print_window{
     $current = $self->debugger->session->lineno;
     my @list = @{$self->debugger->command_get_source($self->debugger->session->current_file, $min, $max)};
     
+    print "\n\n";
     for(@list)
     {
 		
@@ -106,4 +107,30 @@ sub min_lineno{
         $self->debug("min_lineno: $min");
         return $min;
 }
+
+sub print_list_breakpoints{
+    my $self = shift;
+    
+    for my $bp (@{$self->debugger->session->breakpoints})
+    {
+        my $res = " ID: " . $bp->id ;
+        if($bp->type eq 'line')
+        {
+            $res  .= ' on line ' . $bp->lineno;
+        }
+        elsif($bp->type eq 'call')
+        {
+            $res  .= ' on call function  ' . $bp->function;
+        }
+        else
+        {
+            $res  .= ' of UNKNOWN type ' . $bp->type;
+        }
+        
+        say $res;
+    }
+    
+}
+    
+    
 1;

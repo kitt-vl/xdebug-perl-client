@@ -68,6 +68,12 @@ sub process_request{
         return XDBGc::REDO_READ_COMMAND;
     }
     
+    if($cmd =~ /^L$/)
+    {
+        $self->ui->print_list_breakpoints;
+        return XDBGc::REDO_READ_COMMAND;
+    }
+    
     $cmd = 'step_into'  if ($cmd =~ /^s$/);   
     $cmd = 'step_over'  if ($cmd =~ /^n$/);    
     $cmd = 'step_out'   if ($cmd =~ /^r$/);    
@@ -78,7 +84,10 @@ sub process_request{
         my $bp = XDBGc::Debugger::Breakpoint->new(session => $self->session);
         $bp->parse( $cmd );
         $cmd = $bp->to_string;
+        
     }
+    
+    
     
     return $cmd; 
 }
@@ -103,10 +112,18 @@ sub process_response{
     {
         my $cmd = $dom->response->{command};
         
+        if($cmd eq 'breakpoint_set')
+        {
+            if(defined $dom->{id})
+            {
+                my $bp = $self->session->breakpoints->first;
+                $bp->id($dom->{id});
+            }
+        }
         return;
     }
 
-    $self->ui->debug("Unimplemented XDEBUG engine answer:\n$xml");
+    $self->ui->debug("UNEMPLIMENTED XDEBUG engine answer:\n$xml");
 
 }
 

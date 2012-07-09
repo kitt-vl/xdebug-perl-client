@@ -14,7 +14,7 @@ has initial_file => undef;
 has current_file => undef;
 has lineno => 1;
 has status => '';
-has source_cache => sub { my %x = (); return \%x; };
+has source_cache => sub {  return {} };
 has breakpoints => sub { Mojo::Collection->new; };
 
 sub update{

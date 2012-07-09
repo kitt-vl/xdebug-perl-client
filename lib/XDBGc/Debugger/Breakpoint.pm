@@ -6,12 +6,20 @@ use utf8;
 use Mojo::Base -base;
 
 has session => undef;
-has id => undef;
-has type => undef;
+has id => 0;
+has type => '';
 has filename => undef;
 has lineno => undef;
 has function => undef;
 
+sub new{
+    my $class = shift;
+    $class =  ref $class || $class;
+    my $self = $class->SUPER::new(@_);
+    
+    unshift @{$self->session->breakpoints}, $self;
+    return $self;
+}
 
 sub parse{
     my ($self, $cmd) = (shift, shift);
