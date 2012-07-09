@@ -11,6 +11,7 @@ use XDBGc; #log, constants
 use XDBGc::Debugger::Server;
 use XDBGc::Debugger::UI;
 use XDBGc::Debugger::Session;
+use XDBGc::Debugger::Breakpoint;
 
 has server => sub { my $self = shift; return XDBGc::Debugger::Server->new(debugger => $self ); };    
 has session => sub { my $self = shift; return XDBGc::Debugger::Session->new(debugger => $self); };
@@ -53,11 +54,7 @@ sub process_request{
     return XDBGc::REDO_READ_COMMAND unless $cmd;
     
 	$self->server->shutdown if $cmd =~ /^quit/;	
-    if ($cmd =~ /^list/)
-    {
-        $self->command_get_source;
-        return XDBGc::REDO_READ_COMMAND;
-    }
+    $self->server->shutdown if $cmd =~ /^q$/;	
     
     if ($cmd =~ /^debug 1/)
     {
@@ -71,11 +68,17 @@ sub process_request{
         return XDBGc::REDO_READ_COMMAND;
     }
     
-    $cmd = 'step_into'    if ($cmd =~ /^s$/);   
+    $cmd = 'step_into'  if ($cmd =~ /^s$/);   
     $cmd = 'step_over'  if ($cmd =~ /^n$/);    
-    $cmd = 'step_out'  if ($cmd =~ /^r$/);    
-    $cmd = 'run'  if ($cmd =~ /^c$/);  
-    $cmd = 'breakpoint_set'  if ($cmd =~ /^b\s/);
+    $cmd = 'step_out'   if ($cmd =~ /^r$/);    
+    $cmd = 'run'    if ($cmd =~ /^c$/);  
+    if ($cmd =~ /^b\s/)
+    {
+        #$cmd = 'breakpoint_set'; 
+        my $bp = XDBGc::Debugger::Breakpoint->new(session => $self->session);
+        $bp->parse( $cmd );
+        $cmd = $bp->to_string;
+    }
     
     return $cmd; 
 }
