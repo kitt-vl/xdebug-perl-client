@@ -61,22 +61,24 @@ sub parse_cmd{
 sub parse_xml{
     my ($self, $xml) = (shift, shift);
     my $dom = Mojo::DOM->new($xml);
+    my $node = $dom->at('response breakpoint');
+    $node = $dom->at('response') unless defined $node;
     
-    if(defined $dom->at('response') && defined $dom->response->{id})
+    if(defined $node && defined $node->{id})
     {
-        $self->id($dom->response->{id});
-        $self->state($dom->response->{state});
-        $self->type($dom->response->{type});        
+        $self->id($node->{id});
+        $self->state($node->{state});
+        $self->type($node->{type});        
         if(defined $self->type && $self->type eq 'line')
         {
-            $self->filename($dom->response->{filename});
-            $self->lineno($dom->response->{lineno});
+            $self->filename($node->{filename});
+            $self->lineno($node->{lineno});
         }elsif(defined $self->type && $self->type eq 'call')
         {
-            $self->function($dom->response->{function});
+            $self->function($node->{function});
         }
     }
-    
+        
     return $self;
 }
 
@@ -86,6 +88,8 @@ sub to_string{
     if($self->type eq 'line')
     {
         $cmd .= ' -n ' . $self->lineno;
+        $self->filename($self->session->current_file) unless $self->filename;
+        $cmd .= ' -f ' . $self->filename;
     }
     elsif($self->type eq 'call')
     {
