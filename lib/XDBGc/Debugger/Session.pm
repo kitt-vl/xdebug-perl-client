@@ -8,6 +8,7 @@ use Mojo::Base -base;
 use Mojo::DOM;
 use Mojo::Collection;
 
+has debugger => undef;
 has _tid => 0;
 has cwd => undef;
 has initial_file => undef;
@@ -26,8 +27,13 @@ sub update{
         $self->current_file($dom->init->{fileuri});
         $self->lineno(1);
         $self->status('break');
-        
         $self->cwd(dirname($self->initial_file)) if $self->initial_file;
+        
+        for my $bp (@{$self->breakpoints})
+        {
+            $bp->set;
+        }
+        
     }
     
     if( defined $dom->at('response') )
@@ -42,9 +48,7 @@ sub update{
         $self->status($node->{status}) if defined $node->{status};
         $self->current_file($node->{filename}) if defined $node->{filename};
         $self->lineno($node->{lineno}) if defined $node->{lineno};
-    }
-    
-    
+    }    
 }
 
 1;

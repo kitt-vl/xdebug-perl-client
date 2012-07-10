@@ -93,7 +93,7 @@ sub max_lineno{
         $max_win = $self->window_size > $max_win ? $self->window_size : $max_win;
         my $max  =  $max_win > $max_file ? $max_file : $max_win;
         
-        $self->debug("max_lineno: $max");
+        #$self->debug("max_lineno: $max");
         return $max;
 }
 
@@ -105,7 +105,7 @@ sub min_lineno{
         my $min_win = $self->debugger->session->lineno - $half_win;
         my $min =  $min_win > 0 ? $min_win : 1;
         
-        $self->debug("min_lineno: $min");
+        #$self->debug("min_lineno: $min");
         return $min;
 }
 

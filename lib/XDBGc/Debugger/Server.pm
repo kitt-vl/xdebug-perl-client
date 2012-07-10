@@ -68,7 +68,9 @@ sub listen{
 			$data .= $char;					
 		}		
 		$self->client->read($xml,$data+1) if $data;		
-
+        
+        $self->debugger->ui->debug("Server listen: ", $xml);
+        
 		return $xml;
 }
 1;
