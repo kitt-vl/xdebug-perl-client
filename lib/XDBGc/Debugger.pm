@@ -48,6 +48,7 @@ sub on_data_recv{
     $self->process_response($xml);
 }
 
+# outgoing command from debugger to server
 sub process_request{
     my ($self,$cmd) = (shift, shift);
 	
@@ -87,6 +88,13 @@ sub process_request{
     if($cmd =~ /^B\s+(\d+)/)
     {
         my $bp = $self->command_breakpoint_remove($1);
+        return XDBGc::REDO_READ_COMMAND;
+    }
+    
+    if($cmd =~ /^T\s+(\d+)/ || $cmd =~ /^T$/)
+    {
+		
+        my $bp = $self->command_stack_get($1);
         return XDBGc::REDO_READ_COMMAND;
     }
        
@@ -185,4 +193,18 @@ sub command_breakpoint_remove{
     
     return $bp;
 }
+
+sub command_stack_get{
+	my ($self, $depth) = (shift, shift);
+	my $cmd = 'stack_get';
+	$cmd .= ' -d ' . $depth if defined $depth;
+	
+	$self->on_data_send($cmd);
+	my $xml = $self->server->listen;
+	
+	$self->ui->print_stack_list($xml);
+	
+	return 1;
+}
+
 1;

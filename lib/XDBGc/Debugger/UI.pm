@@ -133,9 +133,28 @@ sub print_breakpoints_list{
         }
         
         say $res;
-    }
-    
+    }    
 }
     
-    
+sub print_stack_list{
+	my ($self, $xml) = (shift, shift);
+	
+	my $dom = Mojo::DOM->new($xml);
+	my $col = $dom->find('stack');
+	
+	say "\nStacktrace:";
+	for my $stack (@$col)
+	{
+		my $res = '{' . $stack->{level} . '} ' . $stack->{type};
+		if($stack->{type} eq 'file')
+		{
+			$res .= ' in ' . $stack->{filename} . ' lineno ' . $stack->{lineno};
+		}
+		
+		$res .= ' "' . $stack->{where} . '"' if(defined $stack->{where});
+		
+		say $res;
+	
+	}
+}    
 1;
