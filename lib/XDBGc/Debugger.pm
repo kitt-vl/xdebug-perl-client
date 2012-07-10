@@ -83,6 +83,12 @@ sub process_request{
         my $bp = $self->command_breakpoint_set($cmd);
         return XDBGc::REDO_READ_COMMAND;
     }
+    
+    if($cmd =~ /^B\s+(\d+)/)
+    {
+        my $bp = $self->command_breakpoint_remove($1);
+        return XDBGc::REDO_READ_COMMAND;
+    }
        
     return $cmd; 
 }
@@ -170,5 +176,13 @@ sub command_breakpoint_set{
 	$bp->set;
         
 	return $bp;
+}
+
+sub command_breakpoint_remove{
+    my ($self, $id) = (shift, shift);
+    my $bp = XDBGc::Debugger::Breakpoint->new( id => $id , session => $self->session);
+    $bp->remove if (defined $bp);
+    
+    return $bp;
 }
 1;

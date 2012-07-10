@@ -19,7 +19,15 @@ sub new{
     $class =  ref $class || $class;
     my $self = $class->SUPER::new(@_);
     
-    unshift @{$self->session->breakpoints}, $self;
+    if($self->id)
+    {
+        $self = $self->session->breakpoints->first( sub{ $_->id == $self->id } );
+    }
+    else
+    {
+        unshift @{$self->session->breakpoints}, $self;
+    }    
+    
     return $self;
 }
 
@@ -59,11 +67,11 @@ sub parse_xml{
         $self->id($dom->response->{id});
         $self->state($dom->response->{state});
         $self->type($dom->response->{type});        
-        if($self->type eq 'line')
+        if(defined $self->type && $self->type eq 'line')
         {
             $self->filename($dom->response->{filename});
             $self->lineno($dom->response->{lineno});
-        }elsif($self->type eq 'call')
+        }elsif(defined $self->type && $self->type eq 'call')
         {
             $self->function($dom->response->{function});
         }
@@ -94,20 +102,11 @@ sub set{
     $self->session->debugger->on_data_send($cmd);
     
     my $xml = $self->session->debugger->server->listen;
+  
+    $self->parse_xml($xml);
+    $self->update_info;
     
-    $self->session->debugger->ui->debug("breakpoint set:", $xml);
-    
-    my $dom = Mojo::DOM->new($xml);
-    if(defined $dom->at('response') && defined $dom->response->{id})
-    {
-        $self->id($dom->response->{id});
-        return $self;
-    }
-    else
-    {
-        $self->session->debugger->ui->debug("ERROR SET BREAKPOINT");
-        return undef;
-    }
+    return $self;
 }
 
 sub update_info{
@@ -117,24 +116,42 @@ sub update_info{
     $self->session->debugger->on_data_send($cmd);
     
     my $xml = $self->session->debugger->server->listen;
-    $self->session->debugger->ui->debug("breakpoint update_info:", $xml);
+    #$self->session->debugger->ui->debug("breakpoint update_info:", $xml);
     
     $self->parse_xml($xml);
     
-    unless($self->id)
-    {
-        $self->session->breakpoints->each(sub{
-                                                my ($e, $cnt) = @_;
-                                                if ($self eq $e)
-                                                {
-                                                    splice(@$self->session->breakpoints, $cnt - 1, 1);
-                                                    $self = undef;
-                                                    return $self;
-                                                }
-                                            });
-    }
-    
+    $self->_remove_from_session unless $self->id;
+
     return $self;
 }
 
+sub _remove_from_session{
+    my $self = shift;
+    
+    $self->session->breakpoints->each(sub{
+                                            my ($e, $cnt) = @_;
+                                            splice(@{$self->session->breakpoints}, $cnt - 1, 1) if ($self eq $e);                                                
+                                        });
+    return $self;
+}
+
+sub _remove_from_server{
+    my $self = shift;
+    
+    my $cmd = 'breakpoint_remove -d ' . $self->id;    
+    $self->session->debugger->on_data_send($cmd);
+    
+    my $xml = $self->session->debugger->server->listen;
+    
+    #$self->parse_xml($xml);
+    return $self;
+}
+
+sub remove{
+    my $self = shift;
+    $self->_remove_from_server;
+    $self->_remove_from_session;
+    
+    return $self;
+}
 1;

@@ -115,6 +115,8 @@ sub print_breakpoints_list{
     say "\nList of breakpoints:";
     for my $bp (@{$self->debugger->session->breakpoints})
     {
+        $bp->update_info;
+        
         my $res = " ID: " . $bp->id ;
         if($bp->type eq 'line')
         {
