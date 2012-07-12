@@ -5,7 +5,7 @@ use utf8;
 
 use Mojo::Base -base;
 use Mojo::DOM;
-use Mojo::Util qw/b64_decode/;
+use Mojo::Util qw/b64_decode b64_encode/;
 
 use XDBGc; #log, constants
 use XDBGc::Debugger::Server;
@@ -19,14 +19,16 @@ has ui => sub { my $self = shift;  XDBGc::Debugger::UI->new(debugger => $self); 
 has debug_mode => 1;
 
 sub on_data_send{
-    my ($self,$cmd) = (shift, shift);
+    my ($self, $cmd, $data) = (shift, shift, shift);
 	
     $cmd = $self->process_request($cmd);
     return XDBGc::REDO_READ_COMMAND if $cmd eq XDBGc::REDO_READ_COMMAND;
     
     $self->session->_tid( $self->session->_tid()+1 );
     
-    $cmd .= ' -i ' . $self->session->_tid  . ' -- ' . chr(0);
+    $cmd .= ' -i ' . $self->session->_tid  . ' -- ' ;
+    $cmd .= b64_encode($data) if defined $data;
+    $cmd .= chr(0);
         
     $self->send_data_raw($cmd);
     return 0;
@@ -48,7 +50,7 @@ sub on_data_recv{
     $self->process_response($xml);
 }
 
-# outgoing command from debugger to server
+# outgoing command from IDE to server
 sub process_request{
     my ($self,$cmd) = (shift, shift);
 	
@@ -95,6 +97,12 @@ sub process_request{
     {
 		
         my $bp = $self->command_stack_get($1);
+        return XDBGc::REDO_READ_COMMAND;
+    }
+    
+    if($cmd =~ /^x\s+(.+)/)
+    {
+        my $bp = $self->command_eval($1);
         return XDBGc::REDO_READ_COMMAND;
     }
        
@@ -156,9 +164,8 @@ sub command_get_source{
         {
             $self->ui->debug('command_get_source: NO ANY SOURCE RETURNED');
         }
-        
-        #$self->ui->log('command_get_source: \n' . $list);
-        #TODO How to really determine sources line separator?
+
+        #TODO How to effective determine sources line separator WIN\UNIC\MAC?
         my @lines = split /\r?\n/, $list;
         $self->session->source_cache->{$file} = \@lines;
     }
@@ -205,6 +212,19 @@ sub command_stack_get{
 	$self->ui->print_stack_list($xml);
 	
 	return 1;
+}
+
+sub command_eval{
+    my ($self, $data) = (shift, shift);
+    my $cmd = 'eval';
+
+    $self->on_data_send($cmd, $data);
+    
+    my $xml = $self->server->listen;
+	
+	$self->ui->print_eval($xml);
+    
+    return 1;
 }
 
 1;

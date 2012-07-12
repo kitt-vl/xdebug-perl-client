@@ -5,6 +5,7 @@ use utf8;
 
 use Mojo::Base -base;
 use Mojo::DOM;
+use Mojo::Util qw/b64_decode/;
 use Term::ReadLine;
 
 
@@ -156,5 +157,47 @@ sub print_stack_list{
 		say $res;
 	
 	}
-}    
+} 
+
+sub print_eval{
+    my ($self, $xml) = (shift, shift);
+    
+    my $dom = Mojo::DOM->new($xml);
+    my $var = $dom->at('response > property');
+    
+    $self->print_var($var);
+    
+} 
+
+sub print_var{
+    my ($self, $var, $level) = (shift, shift, shift);
+    $level = 0 unless defined $level;
+    
+    my $res = "\t" x $level;
+    $res .= uc $var->{type};
+    $res .= ':' . $var->{classname} if defined $var->{classname};
+    
+    my $name = $var->{name};
+    $name = '<?>' unless defined $name;
+    
+    $res .= "\t" . $name . ' = ';
+    if(defined $var->{numchildren} && $var->{numchildren} > 0)
+    {
+        $res .= '('. $var->{numchildren} . ' item(s))';
+        say $res;
+        
+        for my $child (@{$var->children})
+        {
+            $self->print_var($child, $level+1);
+        }
+        return;        
+    }
+    else
+    {
+        my $val = defined $var->{encoding} && $var->{encoding} eq 'base64' ? b64_decode($var->text) : $var->text;
+        
+        $res .= $val;
+    }
+    say $res;
+}  
 1;

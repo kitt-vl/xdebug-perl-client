@@ -8,7 +8,7 @@ use FindBin;
 use lib "$FindBin::Bin/lib";
 
 use XDBGc::Debugger;
-
+#русский текст
 my $db = XDBGc::Debugger->new;
 $db->server->start;
 

@@ -120,7 +120,6 @@ sub update_info{
     $self->session->debugger->on_data_send($cmd);
     
     my $xml = $self->session->debugger->server->listen;
-    #$self->session->debugger->ui->debug("breakpoint update_info:", $xml);
     
     $self->parse_xml($xml);
     
@@ -147,7 +146,6 @@ sub _remove_from_server{
     
     my $xml = $self->session->debugger->server->listen;
     
-    #$self->parse_xml($xml);
     return $self;
 }
 
