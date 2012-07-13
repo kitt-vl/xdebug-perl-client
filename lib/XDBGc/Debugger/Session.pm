@@ -19,7 +19,8 @@ has source_cache => sub {  return {} };
 has breakpoints => sub { Mojo::Collection->new; };
 
 sub update{
-    my ($self, $dom) = (shift, shift);
+    my ($self, $xml) = (shift, shift);
+    my $dom = Mojo::DOM->new($xml);
     
     if( defined $dom->at('init') && defined $dom->init->{fileuri} )
     {

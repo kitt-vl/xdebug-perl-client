@@ -110,18 +110,17 @@ sub process_request{
 }
 sub process_response{
     my ($self,$xml) = (shift, shift);
+    $self->session->update($xml);
+    
     my $dom = Mojo::DOM->new($xml);
-    
-
-    $self->session->update($dom);
-    
-    #$self->ui->debug("process_response:\n$xml");
     
     if (defined $dom->at('init'))
     {
         my @lines = $self->command_get_source();
         $self->on_data_send('step_into');
-        $self->server->listen;
+        $xml = $self->server->listen;
+        $self->session->update($xml);
+        $self->ui->print_window;
         return;
     }
     
@@ -129,6 +128,7 @@ sub process_response{
     {
         my $cmd = $response->{command};
         
+        $self->ui->print_window if ($cmd =~ /(step_into|step_over|step_out|return)/);
         
         return;
     }

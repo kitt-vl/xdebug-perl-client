@@ -41,14 +41,7 @@ sub debug{
 
 sub term_read_command{
 	my $self = shift;
-    
-    $self->print_window;
-    
-    my $info = '';
-    $info .= $self->debugger->session->current_file if $self->debugger->session->current_file;
-    $info .= ' , line ' . $self->debugger->session->lineno if $self->debugger->session->lineno;
-    say $info if $info;
-    
+
 	my $cmd = $self->_term->readline('<' . $self->prompt . ':' . $self->debugger->session->status . '>');
 	
 	$self->debug("term_read_command: $cmd");
@@ -80,6 +73,11 @@ sub print_window{
 		
 		$min++;
 	}
+    
+    my $info = '';
+    $info .= $self->debugger->session->current_file if $self->debugger->session->current_file;
+    $info .= ' , line ' . $self->debugger->session->lineno if $self->debugger->session->lineno;
+    say $info if $info;
 }
 
 sub max_lineno{

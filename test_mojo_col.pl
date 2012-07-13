@@ -7,7 +7,7 @@ use Data::Dumper;
 use Mojo::Collection; 
 use Mojo::DOM;
 
-=comment
+=for test1
 my $c = Mojo::Collection->new(qw/first second third fourth fifth sixth seventh second eiglast/); 
 $c->each(
         sub{
