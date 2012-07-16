@@ -144,31 +144,32 @@ sub print_stack_list{
 	say "\nStacktrace:";
 	for my $stack (@$col)
 	{
-		my $res = '{' . $stack->{level} . '} ' . $stack->{type};
+		my $res = '{' . $stack->{level} . '} ';
+        $res .= ' type ' . $stack->{type} unless $stack->{type} eq 'file';
+        
+        $res .= ' "' . $stack->{where} . '"' if(defined $stack->{where});
 		if($stack->{type} eq 'file')
 		{
 			$res .= ' in ' . $stack->{filename} . ' lineno ' . $stack->{lineno};
 		}
-		
-		$res .= ' "' . $stack->{where} . '"' if(defined $stack->{where});
-		
+        
 		say $res;
 	
 	}
 } 
 
 sub print_eval{
-    my ($self, $xml) = (shift, shift);
+    my ($self, $xml, $data) = (shift, shift, shift);
     
     my $dom = Mojo::DOM->new($xml);
     my $var = $dom->at('response > property');
     
-    $self->print_var($var);
+    $self->print_var($var, 0, $data);
     
 } 
 
 sub print_var{
-    my ($self, $var, $level) = (shift, shift, shift);
+    my ($self, $var, $level, $data) = (shift, shift, shift, shift);
     $level = 0 unless defined $level;
     
     my $res = "\t" x $level;
@@ -176,6 +177,7 @@ sub print_var{
     $res .= ':' . $var->{classname} if defined $var->{classname};
     
     my $name = $var->{name};
+    $name  = $data unless defined $name;
     $name = '<?>' unless defined $name;
     
     $res .= "\t" . $name . ' = ';
@@ -194,8 +196,38 @@ sub print_var{
     {
         my $val = defined $var->{encoding} && $var->{encoding} eq 'base64' ? b64_decode($var->text) : $var->text;
         
-        $res .= $val;
+        $val = 'NULL' if $var->{type} eq 'null' ;
+        
+        $val = '0' if $var->{type} =~ /int|float|bool/ and !$val;
+        
+        $val = '"' . $val . '"' if $var->{type} eq 'string';
+        
+        $res .= $val;        
+       
     }
     say $res;
 }  
+
+sub print_option{
+    my ($self, $xml) = (shift, shift);
+    
+    my $dom = Mojo::DOM->new($xml);
+    my $node = $dom->at('response');
+    my $res = '';
+    
+    $res .= $node->{feature_name} . ' = ' . $node->text;
+    $res .= '0' unless $node->text;
+    $res .= ' (not supported)' unless $node->{supported};
+    say $res;
+    
+}
+
+sub print_context{
+    my ($self, $xml, $data) = (shift, shift, shift);
+    
+    my $dom = Mojo::DOM->new($xml);
+    my $var = $dom->at('response > property');
+    
+    $self->print_var($var, 0, $data);
+}
 1;

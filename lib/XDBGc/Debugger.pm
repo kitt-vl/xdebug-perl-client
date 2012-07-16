@@ -41,7 +41,7 @@ sub send_data_raw{
         return unless $cmd;
         
         my $res = $self->server->client->send($cmd);		
-        $self->ui->debug("send_data_raw: cmd '$cmd' sended $res, len " . length($cmd));
+        $self->ui->debug("send_data_raw: cmd '$cmd' sended " , $res, ', len ' . length($cmd));
 }
     
 sub on_data_recv{
@@ -81,6 +81,7 @@ sub process_request{
     $cmd = 'step_over'  if ($cmd =~ /^n$/);    
     $cmd = 'step_out'   if ($cmd =~ /^r$/);    
     $cmd = 'run'    if ($cmd =~ /^c$/);  
+    
     if($cmd =~ /^b\s/)
     {
         my $bp = $self->command_breakpoint_set($cmd);
@@ -106,6 +107,18 @@ sub process_request{
         return XDBGc::REDO_READ_COMMAND;
     }
        
+    if($cmd =~ /^o\s+(.+)/)
+    {
+        my $bp = $self->command_option($1);
+        return XDBGc::REDO_READ_COMMAND;
+    }
+    
+    if($cmd =~ /^V\s+(\d+)/ || $cmd =~ /^V$/)
+    {
+        my $bp = $self->command_context_get($1);
+        return XDBGc::REDO_READ_COMMAND;
+    }
+    
     return $cmd; 
 }
 sub process_response{
@@ -165,7 +178,7 @@ sub command_get_source{
             $self->ui->debug('command_get_source: NO ANY SOURCE RETURNED');
         }
 
-        #TODO How to effective determine sources line separator WIN\UNIC\MAC?
+        #TODO How to effective determine sources line separator WIN\UNIX\MAC?
         my @lines = split /\r?\n/, $list;
         $self->session->source_cache->{$file} = \@lines;
     }
@@ -222,9 +235,63 @@ sub command_eval{
     
     my $xml = $self->server->listen;
 	
-	$self->ui->print_eval($xml);
+	$self->ui->print_eval($xml, $data);
     
     return 1;
 }
 
+sub command_option{
+    my ($self, $data) = (shift, shift);
+     
+    my @opt = split /\s/, $data;
+
+    my $option = shift @opt;
+    my $value = join ' ', @opt;
+    my ($cmd, $xml);
+    
+    $self->command_option_set($option, $value) if $value;
+    
+    #$self->ui->debug('command_option: option = ', $option, ' value = ', $value);
+    $self->command_option_get($option);
+    
+    return 1;
+    
+}
+
+sub command_option_set{
+    my ($self, $option, $value) = (shift, shift, shift);
+    my $cmd = 'feature_set -n ' . $option . ' -v ' . $value;
+    
+    $self->on_data_send($cmd);
+    my $xml = $self->server->listen;
+    return 1;
+}
+
+sub command_option_get{
+    my ($self, $option) = (shift, shift);
+    my $cmd = 'feature_get';
+    
+    $cmd .= ' -n ' . $option;
+    
+    $self->on_data_send($cmd);
+	my $xml = $self->server->listen;
+    
+    $self->ui->print_option($xml);
+    return 1;
+}
+    
+    
+sub command_context_get{
+    my ($self, $num) = (shift, shift);
+    my $cmd = 'context_get';
+    
+    $cmd .= ' -d ' . $num if defined $num;
+    
+    $self->on_data_send($cmd);
+	my $xml = $self->server->listen;
+    
+    $self->ui->print_context($xml);
+    
+    return 1;
+}
 1;
