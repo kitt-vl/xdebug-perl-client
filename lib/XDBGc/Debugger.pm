@@ -13,10 +13,10 @@ use XDBGc::Debugger::UI;
 use XDBGc::Debugger::Session;
 use XDBGc::Debugger::Breakpoint;
 
-has server => sub { my $self = shift; return XDBGc::Debugger::Server->new(debugger => $self ); };    
-has session => sub { my $self = shift; return XDBGc::Debugger::Session->new(debugger => $self); };
-has ui => sub { my $self = shift;  XDBGc::Debugger::UI->new(debugger => $self); };
-has debug_mode => 1;
+has server => sub { XDBGc::Debugger::Server->new(debugger => shift ); };    
+has session => sub { XDBGc::Debugger::Session->new(debugger => shift); };
+has ui => sub { XDBGc::Debugger::UI->new(debugger => shift); };
+has debug_mode => 0;
 
 sub on_data_send{
     my ($self, $cmd, $data) = (shift, shift, shift);
@@ -88,7 +88,7 @@ sub process_request{
         return XDBGc::REDO_READ_COMMAND;
     }
     
-    if($cmd =~ /^B\s+(\d+)/)
+    if($cmd =~ /^B\s+(\d+|\*)/)
     {
         my $bp = $self->command_breakpoint_remove($1);
         return XDBGc::REDO_READ_COMMAND;
@@ -117,8 +117,13 @@ sub process_request{
     {
         my $bp = $self->command_context_get($1);
         return XDBGc::REDO_READ_COMMAND;
-    }
+    }    
     
+    #unless($self->debug_mode)
+    #{
+        #$self->ui->log('Unknown command "' . $cmd . '"');
+        #return XDBGc::REDO_READ_COMMAND;
+    #}
     return $cmd; 
 }
 sub process_response{
@@ -141,7 +146,7 @@ sub process_response{
     {
         my $cmd = $response->{command};
         
-        $self->ui->print_window if ($cmd =~ /(step_into|step_over|step_out|return)/);
+        $self->ui->print_window if ($cmd =~ /(step_into|step_over|step_out|return|run)/);
         
         return;
     }
@@ -208,10 +213,19 @@ sub command_breakpoint_set{
 
 sub command_breakpoint_remove{
     my ($self, $id) = (shift, shift);
-    my $bp = XDBGc::Debugger::Breakpoint->new( id => $id , session => $self->session);
-    $bp->remove if (defined $bp);
-    
-    return $bp;
+    if($id eq '*')
+    {
+        for my $bp (@{$self->session->breakpoints})
+        {
+            $bp->remove;
+        }
+    }
+    else
+    {
+        my $bp = XDBGc::Debugger::Breakpoint->new( id => $id , session => $self->session);
+        $bp->remove if (defined $bp);
+    }
+
 }
 
 sub command_stack_get{

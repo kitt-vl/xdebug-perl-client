@@ -164,6 +164,12 @@ sub print_eval{
     my $dom = Mojo::DOM->new($xml);
     my $var = $dom->at('response > property');
     
+    unless(defined $var)
+    {
+        $self->debug('print_eval: EMPTY ANSWER ("response > property" not found) ');
+        return;
+    }
+    
     $self->print_var($var, 0, $data);
     
 } 
@@ -226,8 +232,11 @@ sub print_context{
     my ($self, $xml, $data) = (shift, shift, shift);
     
     my $dom = Mojo::DOM->new($xml);
-    my $var = $dom->at('response > property');
+    my $col = $dom->find('response > property');
     
-    $self->print_var($var, 0, $data);
+    for my $var(@{$col})
+    {
+        $self->print_var($var, 0, $data);
+    }
 }
 1;
