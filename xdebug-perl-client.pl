@@ -20,7 +20,10 @@ while($db->server->accept)
 			
             while(1)
             {
-                my $cmd = $db->ui->term_read_command();                        
+                my $cmd = $db->ui->term_read_command();  
+                $cmd = $db->parse_cmd($cmd);
+                redo if $cmd eq XDBGc::REDO_READ_COMMAND;
+                          
                 my $res = $db->on_data_send($cmd);
                 last unless $res;
             }

@@ -20,9 +20,6 @@ has debug_mode => 0;
 
 sub on_data_send{
     my ($self, $cmd, $data) = (shift, shift, shift);
-	
-    $cmd = $self->process_request($cmd);
-    return XDBGc::REDO_READ_COMMAND if $cmd eq XDBGc::REDO_READ_COMMAND;
     
     $self->session->_tid( $self->session->_tid()+1 );
     
@@ -51,21 +48,20 @@ sub on_data_recv{
 }
 
 # outgoing command from IDE to server
-sub process_request{
+sub parse_cmd{
     my ($self,$cmd) = (shift, shift);
 	
     return XDBGc::REDO_READ_COMMAND unless $cmd;
-    
-	$self->server->shutdown if $cmd =~ /^quit/;	
+
     $self->server->shutdown if $cmd =~ /^q$/;	
     
-    if ($cmd =~ /^debug 1/)
+    if ($cmd =~ /^debug 1$/)
     {
         $self->debug_mode(1);
         return XDBGc::REDO_READ_COMMAND;
     }
     
-    if ($cmd =~ /^debug 0/)
+    if ($cmd =~ /^debug 0$/)
     {
         $self->debug_mode(0);
         return XDBGc::REDO_READ_COMMAND;
@@ -76,11 +72,6 @@ sub process_request{
         $self->ui->print_breakpoints_list;
         return XDBGc::REDO_READ_COMMAND;
     }
-    
-    $cmd = 'step_into'  if ($cmd =~ /^s$/);   
-    $cmd = 'step_over'  if ($cmd =~ /^n$/);    
-    $cmd = 'step_out'   if ($cmd =~ /^r$/);    
-    $cmd = 'run'    if ($cmd =~ /^c$/);  
     
     if($cmd =~ /^b\s/)
     {
@@ -117,13 +108,43 @@ sub process_request{
     {
         my $bp = $self->command_context_get($1);
         return XDBGc::REDO_READ_COMMAND;
-    }    
+    } 
     
-    #unless($self->debug_mode)
-    #{
-        #$self->ui->log('Unknown command "' . $cmd . '"');
-        #return XDBGc::REDO_READ_COMMAND;
-    #}
+    if($cmd =~ /^v$/)
+    {
+        my $bp = $self->ui->print_window;
+        return XDBGc::REDO_READ_COMMAND;
+    }
+    
+    if ($cmd =~ /^s$/)
+     {
+        $cmd = 'step_into' ;
+        return $cmd;
+     }
+     
+     if($cmd =~ /^n$/)
+     {
+        $cmd = 'step_over' ;
+        return $cmd;
+     } 
+        
+    if ($cmd =~ /^r$/)
+    {
+        $cmd = 'step_out';
+        return $cmd;
+    }
+    
+    if ($cmd =~ /^c$/)
+    {
+        $cmd = 'run'   ;
+        return $cmd;
+    }     
+    
+    unless($self->debug_mode)
+    {
+        $self->ui->log('Unknown command "' . $cmd . '"');
+        return XDBGc::REDO_READ_COMMAND;
+    }
     return $cmd; 
 }
 sub process_response{
@@ -134,6 +155,10 @@ sub process_response{
     
     if (defined $dom->at('init'))
     {
+        $self->command_option_set('max_data', 16777216);
+        $self->command_option_set('max_children', 1024);
+        $self->command_option_set('max_depth', 1024);
+        
         my @lines = $self->command_get_source();
         $self->on_data_send('step_into');
         $xml = $self->server->listen;
