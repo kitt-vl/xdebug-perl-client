@@ -53,6 +53,7 @@ sub parse_cmd{
 	
     return XDBGc::REDO_READ_COMMAND unless $cmd;
 
+    
     $self->server->shutdown if $cmd =~ /^q$/;	
     
     if ($cmd =~ /^debug 1$/)
@@ -94,7 +95,7 @@ sub parse_cmd{
     
     if($cmd =~ /^x\s+(.+)/)
     {
-        my $bp = $self->command_eval($1);
+        my $bp = $self->command_eval($1, $use_pager);
         return XDBGc::REDO_READ_COMMAND;
     }
        
@@ -267,14 +268,14 @@ sub command_stack_get{
 }
 
 sub command_eval{
-    my ($self, $data) = (shift, shift);
+    my ($self, $data, $use_pager) = (shift, shift, shift);
     my $cmd = 'eval';
 
     $self->on_data_send($cmd, $data);
     
     my $xml = $self->server->listen;
 	
-	$self->ui->print_eval($xml, $data);
+	$self->ui->print_eval($xml, $data, $use_pager);
     
     return 1;
 }

@@ -7,12 +7,14 @@ use Mojo::Base -base;
 use Mojo::DOM;
 use Mojo::Util qw/b64_decode/;
 use Term::ReadLine;
+use IO::Pager::Unbuffered;
 
 
 has _term => sub { Term::ReadLine->new('', \*STDIN, \*STDOUT); };
 has prompt => 'XDBGc';
 has debugger => undef;
 has window_size => 10;
+has use_pager => 0;
 
 sub log{
     my $self = shift;
@@ -44,6 +46,13 @@ sub term_read_command{
 
 	my $cmd = $self->_term->readline('<' . $self->prompt . ':' . $self->debugger->session->status . '>');
 	
+    $cmd =~ s/^\s+//;
+    $cmd =~ s/\s+$//;
+    
+    $self->use_pager( $cmd =~ s{^\|}{} );
+    
+    $cmd =~ s/^\s+//;    
+    
 	$self->debug("term_read_command: $cmd");
 	
 	return $cmd;	
@@ -102,6 +111,7 @@ sub min_lineno{
         my $half_win = int($self->window_size/2);
 
         my $min_win = $self->debugger->session->lineno - $half_win;
+        
         my $min =  $min_win > 0 ? $min_win : 1;
         
         #$self->debug("min_lineno: $min");
@@ -170,11 +180,12 @@ sub print_eval{
         return;
     }
     
-    $self->print_var($var, 0, $data);
-    
+    #$self->print_var($var, 0, $data, $use_pager);
+    my $res = $self->parse_var($var, 0, $data);
+    $self->use_pager ? $self->print_pager($res) : say $res;
 } 
 
-sub print_var{
+sub parse_var{
     my ($self, $var, $level, $data) = (shift, shift, shift, shift);
     $level = 0 unless defined $level;
     
@@ -183,13 +194,53 @@ sub print_var{
     $res .= ':' . $var->{classname} if defined $var->{classname};
     
     my $name = $var->{name};
-    $name  = $data unless defined $name;
+    $name = $data unless defined $name;
     $name = '<?>' unless defined $name;
     
     $res .= "\t" . $name . ' = ';
     if(defined $var->{numchildren} && $var->{numchildren} > 0)
     {
         $res .= '('. $var->{numchildren} . ' item(s))';
+        
+        for my $child (@{$var->children})
+        {
+            $res .=  "\n" . $self->parse_var($child, $level+1) ;
+        }
+        return $res;        
+    }
+    else
+    {
+        my $val = defined $var->{encoding} && $var->{encoding} eq 'base64' ? b64_decode($var->text) : $var->text;
+        
+        $val = 'NULL' if $var->{type} eq 'null' ;
+        
+        $val = '0' if $var->{type} =~ /int|float|bool/ and !$val;
+        
+        $val = '"' . $val . '"' if $var->{type} eq 'string';
+        
+        $res .= $val;        
+        return $res ;
+    }
+    
+}
+
+sub print_var{
+    my ($self, $var, $level, $data, $use_pager) = (shift, shift, shift, shift, shift);
+    $level = 0 unless defined $level;
+    
+    my $res = "\t" x $level;
+    $res .= uc $var->{type};
+    $res .= ':' . $var->{classname} if defined $var->{classname};
+    
+    my $name = $var->{name};
+    $name = $data unless defined $name;
+    $name = '<?>' unless defined $name;
+    
+    $res .= "\t" . $name . ' = ';
+    if(defined $var->{numchildren} && $var->{numchildren} > 0)
+    {
+        $res .= '('. $var->{numchildren} . ' item(s))';
+        
         say $res;
         
         for my $child (@{$var->children})
@@ -208,10 +259,11 @@ sub print_var{
         
         $val = '"' . $val . '"' if $var->{type} eq 'string';
         
-        $res .= $val;        
+        $res .= $val ;        
        
+        say $res;
     }
-    say $res;
+    
 }  
 
 sub print_option{
@@ -238,5 +290,14 @@ sub print_context{
     {
         $self->print_var($var, 0, $data);
     }
+}
+
+sub print_pager{
+    my ($self, $data) = (shift, shift);
+
+    my $token = new IO::Pager::Unbuffered;
+    $token->print($data);
+    
+    $self->use_pager(0);
 }
 1;
