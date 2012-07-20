@@ -304,6 +304,10 @@ sub command_option_set{
     
     $self->on_data_send($cmd);
     my $xml = $self->server->listen;
+    
+    my $dom = Mojo::DOM->new($xml);    
+    $self->ui->print_error($dom) if $dom->at('error');
+    
     return 1;
 }
 

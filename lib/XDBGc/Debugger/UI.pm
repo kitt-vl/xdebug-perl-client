@@ -300,4 +300,16 @@ sub print_pager{
     
     $self->use_pager(0);
 }
+
+sub print_error{
+    my ($self, $dom) = (shift, shift);
+    my $res = '';
+    my $message = $dom->at('response > error > message');
+    my $response = $dom->at('response');
+    
+    $res .= 'Command "' . $response->{command} . '" error: ' if $response->{command};
+    $res .= $message->text if $message->text;
+    
+    say $res if $res;
+}
 1;
