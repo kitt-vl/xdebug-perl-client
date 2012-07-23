@@ -68,6 +68,12 @@ sub parse_cmd{
         return XDBGc::REDO_READ_COMMAND;
     }
     
+    if ($cmd =~ /^o\s+win\s+(\d+)$/)
+    {
+        $self->ui->window_size($1);
+        return XDBGc::REDO_READ_COMMAND;
+    }
+    
     if($cmd =~ /^L$/)
     {
         $self->ui->print_breakpoints_list;
@@ -132,6 +138,15 @@ sub parse_cmd{
     if ($cmd =~ /^r$/)
     {
         $cmd = 'step_out';
+        return $cmd;
+    }
+    
+    #run until linono or function
+    if ($cmd =~ /^c\s+(\w+)$/)
+    {
+        
+        my $bp = $self->command_breakpoint_set($cmd, 1);
+        $cmd = 'run';
         return $cmd;
     }
     
@@ -229,9 +244,10 @@ sub command_get_source{
 }
 
 sub command_breakpoint_set{
-	my ($self, $cmd) = (shift, shift);
-	my $bp = XDBGc::Debugger::Breakpoint->new(session => $self->session);
+	my ($self, $cmd, $is_temp) = (shift, shift, shift);
+	my $bp = XDBGc::Debugger::Breakpoint->new(session => $self->session,is_temprory => $is_temp);
 	$bp->parse_cmd( $cmd );
+    #$bp->is_temprory($is_temp);
 	$bp->set;
         
 	return $bp;
@@ -313,6 +329,7 @@ sub command_option_set{
 
 sub command_option_get{
     my ($self, $option) = (shift, shift);
+    
     my $cmd = 'feature_get';
     
     $cmd .= ' -n ' . $option;

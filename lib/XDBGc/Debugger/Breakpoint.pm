@@ -13,7 +13,7 @@ has state => '';
 has filename => undef;
 has lineno => undef;
 has function => undef;
-
+has is_temprory => 0;
 sub new{
     my $class = shift;
     $class =  ref $class || $class;
@@ -25,7 +25,7 @@ sub new{
     }
     else
     {
-        unshift @{$self->session->breakpoints}, $self;
+        unshift @{$self->session->breakpoints}, $self unless $self->is_temprory;
     }    
     
     return $self;
@@ -96,6 +96,7 @@ sub to_string{
         $cmd .= ' -m ' . $self->function;
     }
     
+    $cmd .= ' -r 1' if $self->is_temprory;
     return $cmd;
 }
 
