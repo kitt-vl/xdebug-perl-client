@@ -3,6 +3,7 @@ use strict;
 use warnings;
 use utf8;
 
+use Carp;
 use Mojo::Base -base;
 use Mojo::DOM;
 use Mojo::Util qw/b64_decode/;
@@ -37,7 +38,7 @@ sub debug{
 	my $msg = "@{[ @_ ]}";
 	utf8::decode($msg);
 
-	say "\n\n[DEBUG @{[ ~~localtime ]}]: $msg";	 
+	carp "\n\n[DEBUG @{[ ~~localtime ]}]: $msg";	 
 }
 
 

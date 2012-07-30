@@ -16,7 +16,7 @@ use XDBGc::Debugger::Breakpoint;
 has server => sub { XDBGc::Debugger::Server->new(debugger => shift ); };    
 has session => sub { XDBGc::Debugger::Session->new(debugger => shift); };
 has ui => sub { XDBGc::Debugger::UI->new(debugger => shift); };
-has debug_mode => 0;
+has debug_mode => 1;
 
 sub on_data_send{
     my ($self, $cmd, $data) = (shift, shift, shift);

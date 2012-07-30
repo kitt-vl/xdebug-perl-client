@@ -6,6 +6,7 @@ use utf8;
 use Mojo::Base -base;
 use Mojo::DOM;
 
+
 has session => undef;
 has id => 0;
 has type => '';
@@ -14,6 +15,7 @@ has filename => undef;
 has lineno => undef;
 has function => undef;
 has is_temprory => 0;
+
 sub new{
     my $class = shift;
     $class =  ref $class || $class;
@@ -36,10 +38,17 @@ sub parse_cmd{
     
     my @opts = split /\s/, $cmd;
     shift @opts;
-    unshift @opts, $self->session->lineno unless scalar @opts;
+    
     
     $cmd = 'breakpoint_set';
+    if($opts[0] eq 'file')
+    {
+        shift @opts;
+        my $filename = shift @opts;
+        $self->filename($self->session->cwd .'/' . $filename);
+    }
     
+    unshift @opts, $self->session->lineno unless scalar @opts;
     if(scalar @opts == 1)
     {
         my $where = shift @opts;
@@ -97,6 +106,7 @@ sub to_string{
     }
     
     $cmd .= ' -r 1' if $self->is_temprory;
+       
     return $cmd;
 }
 
