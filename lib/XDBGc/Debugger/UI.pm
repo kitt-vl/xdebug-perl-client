@@ -37,8 +37,9 @@ sub debug{
     
 	my $msg = "@{[ @_ ]}";
 	utf8::decode($msg);
-
-	carp "\n\n[DEBUG @{[ ~~localtime ]}]: $msg";	 
+    
+    my @src = caller;
+	say "\n\n[DEBUG $src[0]:$src[2]]: $msg";	 
 }
 
 

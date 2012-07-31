@@ -15,6 +15,7 @@ has filename => undef;
 has lineno => undef;
 has function => undef;
 has is_temprory => 0;
+has expression => undef;
 
 sub new{
     my $class = shift;
@@ -49,22 +50,28 @@ sub parse_cmd{
     }
     
     unshift @opts, $self->session->lineno unless scalar @opts;
-    if(scalar @opts == 1)
+
+    my $where = shift @opts;
+    $where = $self->session->lineno unless $where;
+    
+    if($where =~ /^\d+$/) #on line number
     {
-        my $where = shift @opts;
-        $where = $self->session->lineno unless $where;
-        
-        if($where =~ /^\d+$/) #on line number
-        {
-            $self->type('line');
-            $self->lineno($where);
-        }
-        else #on function call
-        {
-            $self->type('call');
-            $self->function($where);
-        }              
-    }    
+        $self->type('line');
+        $self->lineno($where);
+    }
+    else #on function call
+    {
+        $self->type('call');
+        $self->function($where);
+    }  
+    
+    #all that remain is expression of conditional bp
+    if(scalar @opts)            
+    {
+        my $expr = join ' ', @opts; 
+        $self->expression($expr);
+    }
+  
 }
 
 sub parse_xml{
@@ -106,15 +113,16 @@ sub to_string{
     }
     
     $cmd .= ' -r 1' if $self->is_temprory;
-       
+      
+      
+    
     return $cmd;
 }
 
 sub set{
     my $self = shift;
-    my $cmd = $self->to_string;
     
-    $self->session->debugger->on_data_send($cmd);
+    $self->session->debugger->on_data_send($self->to_string, $self->expression);
     
     my $xml = $self->session->debugger->server->listen;
   
