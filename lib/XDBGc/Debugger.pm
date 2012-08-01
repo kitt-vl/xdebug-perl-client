@@ -52,7 +52,6 @@ sub parse_cmd{
     my ($self,$cmd) = (shift, shift);
 	
     return XDBGc::REDO_READ_COMMAND unless $cmd;
-
     
     $self->server->shutdown if $cmd =~ /^q$/;	
     
@@ -141,20 +140,20 @@ sub parse_cmd{
         return $cmd;
     }
     
-    #run until linono or function
-    if ($cmd =~ /^c\s+(\w+)$/)
+    #run until lineno or function
+    if ($cmd =~ /^c(:?\s+(\w+))?$/)
     {
         
-        my $bp = $self->command_breakpoint_set($cmd, 1);
+        my $bp = $self->command_breakpoint_set($cmd, 1) if defined $1;
         $cmd = 'run';
         return $cmd;
     }
     
-    if ($cmd =~ /^c$/)
-    {
-        $cmd = 'run'   ;
-        return $cmd;
-    }     
+    #if ($cmd =~ /^c$/)
+    #{
+        #$cmd = 'run'   ;
+        #return $cmd;
+    #}     
     
     unless($self->debug_mode)
     {
