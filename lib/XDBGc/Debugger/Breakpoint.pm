@@ -37,9 +37,8 @@ sub new{
 sub parse_cmd{
     my ($self, $cmd) = (shift, shift);
     
+    $cmd =~ s/^b\s+//;
     my @opts = split /\s/, $cmd;
-    shift @opts;
-    
     
     $cmd = 'breakpoint_set';
     if($opts[0] eq 'file')

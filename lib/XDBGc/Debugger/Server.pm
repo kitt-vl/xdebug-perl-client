@@ -40,7 +40,7 @@ sub shutdown{
 	$self->client->close if $self->client;
 	$self->server->close if $self->server;
 	$self->debugger->ui->log( "Program shutdown'ed(0)");
-	exit 0;	
+	#exit 0;	
 }
 
 sub accept{

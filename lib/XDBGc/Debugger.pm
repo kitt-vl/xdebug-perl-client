@@ -53,7 +53,7 @@ sub parse_cmd{
 	
     return XDBGc::REDO_READ_COMMAND unless $cmd;
     
-    $self->server->shutdown if $cmd =~ /^q$/;	
+    $self->server->shutdown and exit 0 if $cmd =~ /^q$/;	
     
     if ($cmd =~ /^debug 1$/)
     {
@@ -79,8 +79,9 @@ sub parse_cmd{
         return XDBGc::REDO_READ_COMMAND;
     }
     
-    if($cmd =~ /^b\s/)
+    if($cmd =~ /^b/)
     {
+        $cmd =~ /^b\s+/;
         my $bp = $self->command_breakpoint_set($cmd);
         return XDBGc::REDO_READ_COMMAND;
     }
@@ -124,14 +125,15 @@ sub parse_cmd{
     
     if ($cmd =~ /^s$/)
      {
-        $cmd = 'step_into' ;
-        return $cmd;
+        $self->command_step_into;
+        return XDBGc::REDO_READ_COMMAND;
      }
      
      if($cmd =~ /^n$/)
      {
-        $cmd = 'step_over' ;
-        return $cmd;
+        #$cmd = 'step_over' ;
+        $self->command_step_over;
+        return XDBGc::REDO_READ_COMMAND;
      } 
         
     if ($cmd =~ /^r$/)
@@ -143,17 +145,9 @@ sub parse_cmd{
     #run until lineno or function
     if ($cmd =~ /^c(:?\s+(\w+))?$/)
     {
-        
-        my $bp = $self->command_breakpoint_set($cmd, 1) if defined $1;
-        $cmd = 'run';
-        return $cmd;
+        $self->command_continue($1);
+        return XDBGc::REDO_READ_COMMAND;
     }
-    
-    #if ($cmd =~ /^c$/)
-    #{
-        #$cmd = 'run'   ;
-        #return $cmd;
-    #}     
     
     unless($self->debug_mode)
     {
@@ -164,6 +158,7 @@ sub parse_cmd{
 }
 sub process_response{
     my ($self,$xml) = (shift, shift);
+    return unless $xml;
     $self->session->update($xml);
     
     my $dom = Mojo::DOM->new($xml);
@@ -194,6 +189,39 @@ sub process_response{
     $self->ui->debug("UNEMPLIMENTED XDEBUG engine answer:\n$xml");
 
 }
+
+sub command_step_over{
+    my $self = shift;
+	my $cmd = 'step_over';
+	
+	$self->on_data_send($cmd);
+	my $xml = $self->server->listen;
+    $self->on_data_recv($xml);
+
+}
+
+sub command_step_into{
+    my $self= shift;
+	my $cmd = 'step_into';
+	
+	$self->on_data_send($cmd);
+	my $xml = $self->server->listen;
+    $self->on_data_recv($xml);
+
+}
+
+sub command_continue{
+    my ($self, $till) = (shift, shift);
+    my $bp = $self->command_breakpoint_set($till, 1) if defined $till;
+    
+	my $cmd = 'run';
+	$self->on_data_send($cmd);
+    
+	my $xml = $self->server->listen;
+    $self->on_data_recv($xml);
+
+}
+
 
 sub command_get_source{
     my ($self, $file, $line_start, $line_end) = @_;
@@ -246,7 +274,6 @@ sub command_breakpoint_set{
 	my ($self, $cmd, $is_temp) = (shift, shift, shift);
 	my $bp = XDBGc::Debugger::Breakpoint->new(session => $self->session,is_temprory => $is_temp);
 	$bp->parse_cmd( $cmd );
-    #$bp->is_temprory($is_temp);
 	$bp->set;
         
 	return $bp;
@@ -279,7 +306,10 @@ sub command_stack_get{
 	
 	$self->ui->print_stack_list($xml);
 	
-	return 1;
+    my $dom = Mojo::DOM->new($xml);
+	my $col = $dom->find('stack');
+    
+    return $col;
 }
 
 sub command_eval{

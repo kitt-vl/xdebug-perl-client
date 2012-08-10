@@ -2,11 +2,13 @@ use strict;
 use warnings;
 
 
-use Test::More tests => 13;
+use Test::More tests => 35;
 use Mojo::UserAgent;
 use Mojo::DOM;
+use Mojo::IOLoop;
 use lib 'lib';
 use feature qw/say/;
+use Data::Dumper;
 
 use_ok 'XDBGc';
 use_ok 'XDBGc::Debugger';
@@ -33,57 +35,114 @@ $db->debug_mode(0);
 
 isa_ok $db, 'XDBGc::Debugger', 'Right class';
 
-##connect with ua
-
 $db->server->start; 
 
-
-#my $ext_t = threads->create( sub {
-        
-    #sleep 3;
-    #my $ua = Mojo::UserAgent->new;
-    #my $tx = $ua->get($debug_uri);
-    ##is $tx->res->code, 200, 'Debug session successfully finish';
-#});
-#my $delay = Mojo::IOLoop->delay;
-  
-#$delay->begin;
-#$ua->on(start => sub { sleep 1;});
-my $res = $ua->get($debug_uri);
+$ua->inactivity_timeout(1);
+$tx = $ua->get($debug_uri);
 
 
-
-
-while($db->server->accept)
+if($db->server->accept)
 {
-	while( my $xml = $db->server->listen)
+    say 'BEFORE LISTEN';
+	if( my $xml = $db->server->listen)
 	{
             
+            say 'IN LISTEN';
             my $dom = Mojo::DOM->new($xml);
             my $init = $dom->at('init');
+            
             ok $init, 'Init node exists';
 			is $init->{language}, 'PHP', 'Right program language';
             like $init->{fileuri}, qr/xdbgc\_test\/index\.php$/, 'Right debug URL';
-            #11
+
             $db->on_data_recv($xml);
             
             like $db->session->initial_file, qr/xdbgc\_test\/index\.php$/,  'Right db->session initial file';
             like $db->session->current_file, qr/xdbgc\_test\/index\.php$/,  'Right db->session current file';
-            #while(1)
-            #{
-                #my $cmd = $db->ui->term_read_command();  
-                #$cmd = $db->parse_cmd($cmd);
-                #redo if $cmd eq XDBGc::REDO_READ_COMMAND;
-                          
-                #my $res = $db->on_data_send($cmd);
-                #last unless $res;
-            #}
             
-            $db->server->shutdown;
-            last;
+            is $db->session->status, 'break', 'Right status';
+            
+            #stack size test
+            is $db->command_stack_get->size, 1, 'Rigth stack size';
+            
+            #step_over test
+            is $db->session->lineno, 3, 'Right stop on first script line';
+             
+            $db->command_step_over;
+            is $db->session->lineno, 4, 'Right step over function';
+                        
+            $db->command_step_over;
+            is $db->session->lineno, 42, 'Right step over';
+            
+            $db->command_step_over;
+            is $db->session->lineno, 44, 'Right step over';
+            
+            $db->command_step_over;
+            is $db->session->lineno, 46, 'Right step over';
+            $db->command_step_over;
+            
+            #step_into test
+            $db->command_step_into;
+            is $db->session->lineno, 6, 'Right step into function';
+            
+            #stack size test
+            is $db->command_stack_get->size, 2, 'Rigth stack size';           
+           
+            #step_into test
+            $db->command_continue(32);
+            is $db->session->lineno, 32, 'Right continue till lineno'; 
+            
+            #step_over test
+            $db->command_step_over;
+            is $db->session->lineno, 34, 'Right step over function';
+            
+            $db->command_step_over;
+            is $db->session->lineno, 40, 'Right step over function';
+            is $db->session->status, 'break', 'Right status';
+            
+            $db->command_continue();
+            is $db->session->status, 'stopping', 'Right status';
+            
+            $db->command_continue();
+
+
 	}
     #$db->ui->log('Debug session ended, waiting for new connections');
 }
+
+
+$tx = $ua->get($debug_uri);
+if($db->server->accept)
+{
+    say 'BEFORE LISTEN';
+	if( my $xml = $db->server->listen)
+	{
+        $db->on_data_recv($xml);
+        is $db->session->status, 'break', 'Right status';
+        
+        my $bp = $db->command_breakpoint_set('test1');
+        is $bp->type, 'call', 'Rigth breakpoin type (on function call)';
+        is $db->session->breakpoints->size, 1, 'Right breakpoint count';
+        
+        $db->command_continue();
+        is $db->session->status, 'break', 'Right status';
+        is $db->session->lineno, 6, 'Right step over function';
+        
+        
+        $db->command_continue();
+        
+        is $db->session->status, 'break', 'Right status';
+        is $db->session->lineno, 6, 'Right step over function';
+        
+        
+        $db->command_continue();
+        is $db->session->status, 'stopping', 'Right status';
+        
+    }
+}        
+
+$db->server->shutdown;
+#say Dumper($tx);
  
 
 

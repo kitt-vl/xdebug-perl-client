@@ -5,7 +5,7 @@ use utf8;
 package XDBGc;
 use Mojo::Base -base;
 use constant {
-        REDO_READ_COMMAND => 1
+        REDO_READ_COMMAND => 131_072
 };
 
 sub log{
